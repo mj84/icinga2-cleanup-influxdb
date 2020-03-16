@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import argparse
 import json
 import subprocess
 import requests
@@ -10,6 +11,12 @@ INFLUX_DATABASE = 'icinga2'
 ICINGA2_API_URL = 'https://1.2.3.4:5665'
 ICINGA2_API_USERNAME = 'icinga2-api-user'
 ICINGA2_API_PASSWORD = 'password'
+
+if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-d', '--dryrun', action='store_true',
+                      help='show what would be dropped')
+  args = parser.parse_args()
 
 # Read hostnames from Icinga2
 print('''+------------------------------------------------------------------+
@@ -60,10 +67,13 @@ Cleaning up measurement %s''' % measurement)
         if measurement_hostname not in icinga2_hostnames:
             print('Hostname %s does not exist in Icinga2!' % measurement_hostname)
             measurement_orphaned_hosts.append(measurement_hostname)
-            print('Dropping all series for host %s' % measurement_hostname)
-            drop_series_command = ['influx', '-database', INFLUX_DATABASE, '-execute', 'DROP SERIES WHERE "hostname" = \'%s\'' % measurement_hostname ]
-            drop_series_result = subprocess.run(drop_series_command, stdout=subprocess.PIPE)
-            # Uncomment the line below to print output of DROP SERIES command, which is usually empty
-            #print('DROP SERIES returned: %s' % drop_series_result.stdout.decode('utf-8'))
+            if args.dryrun:
+              print('Dry Run: would drop all series for host %s' % measurement_hostname)
+            else:
+              print('Dropping all series for host %s' % measurement_hostname)
+              drop_series_command = ['influx', '-database', INFLUX_DATABASE, '-execute', 'DROP SERIES WHERE "hostname" = \'%s\'' % measurement_hostname ]
+              drop_series_result = subprocess.run(drop_series_command, stdout=subprocess.PIPE)
+              # Uncomment the line below to print output of DROP SERIES command, which is usually empty
+              #print('DROP SERIES returned: %s' % drop_series_result.stdout.decode('utf-8'))
     print('''Measurement %s returned %s/%s orphaned/total hosts.
 +------------------------------------------------------------------+''' % (measurement, len(measurement_orphaned_hosts), len(measurement_hostnames)))
